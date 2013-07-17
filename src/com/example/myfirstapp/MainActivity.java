@@ -6,6 +6,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.provider.ContactsContract.PhoneLookup;
 import android.view.Menu;
@@ -18,6 +19,49 @@ public class MainActivity extends Activity
     {
         super.onCreate( savedInstanceState );
         setContentView( R.layout.activity_main );
+    }
+
+    private class getAllConversations extends AsyncTask< String, Integer, ArrayList< String > >
+    {
+
+        @Override
+        protected ArrayList< String > doInBackground( String... params )
+        {
+            Uri SMS_INBOX = Uri.parse( "content://mms-sms/conversations/" );
+            Cursor c = getContentResolver().query( SMS_INBOX, null, null, null, "date desc" );
+            ArrayList< String > conversationAdresses = new ArrayList< String >();
+
+            if ( c.moveToNext() )
+            {
+                do
+                {
+                    String address = c.getString( c.getColumnIndex( "address" ) );
+                    // conversationAdresses.add( c.getString( c.getColumnIndex( "address" ) ) );
+                    // conversationAdresses
+                    // .add( c.getString( c.getColumnIndex( PhoneLookup.DISPLAY_NAME ) ) );
+
+                    String contact = address;
+                    Uri uri =
+                        Uri.withAppendedPath( PhoneLookup.CONTENT_FILTER_URI, Uri.encode( address ) );
+                    Cursor cs = getContentResolver().query( uri, new String[]
+                    {
+                        PhoneLookup.DISPLAY_NAME
+                    }, PhoneLookup.NUMBER + "='" + address + "'", null, null );
+
+                    if ( cs.getCount() > 0 )
+                    {
+                        cs.moveToFirst();
+                        contact = cs.getString( cs.getColumnIndex( PhoneLookup.DISPLAY_NAME ) );
+                    }
+                    conversationAdresses.add( contact );
+
+                }
+                while ( c.moveToNext() );
+
+            }
+            return conversationAdresses;
+        }
+
     }
 
     public void getSMS( View v )

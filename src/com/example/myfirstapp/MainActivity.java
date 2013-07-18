@@ -3,60 +3,164 @@ package com.example.myfirstapp;
 import java.util.ArrayList;
 
 import android.app.Activity;
+import android.app.ProgressDialog;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Handler;
 import android.provider.ContactsContract.PhoneLookup;
+import android.util.Log;
 import android.view.Menu;
 import android.view.View;
+import android.view.View.OnClickListener;
+import android.widget.Button;
 
 public class MainActivity extends Activity
 {
+    private int fileSize = 0;
+    private int MAX_SIZE = 0;
+    private ProgressDialog progressBar;
+    private int progressBarStatus;
+    private Button btnStartProgress;
+    private final Handler progressBarHandler = new Handler();
+    ArrayList< String > conversationAdresses = new ArrayList< String >();
+
     @Override
     protected void onCreate( Bundle savedInstanceState )
     {
         super.onCreate( savedInstanceState );
         setContentView( R.layout.activity_main );
+        btnStartProgress = ( Button ) findViewById( R.id.button1 );
+        addListenerOnButton();
+    }
+
+    private void addListenerOnButton()
+    {
+
+        btnStartProgress.setOnClickListener( new OnClickListener()
+        {
+            @Override
+            public void onClick( View v )
+            {
+                progressBar = new ProgressDialog( v.getContext() );
+                progressBar.setCancelable( true );
+                progressBar.setMessage( "Fetching Data" );
+                progressBar.setProgressStyle( ProgressDialog.STYLE_HORIZONTAL );
+                progressBar.setProgress( 0 );
+                progressBar.show();
+
+                new Thread( new Runnable()
+                {
+                    @Override
+                    public void run()
+                    {
+                        Uri SMS_INBOX = Uri.parse( "content://mms-sms/conversations/" );
+                        Cursor c =
+                            getContentResolver().query( SMS_INBOX, null, null, null,
+                                "date desc limit 100" );
+                        MAX_SIZE = c.getCount();
+                        progressBar.setMax( MAX_SIZE );
+                        if ( c.moveToFirst() )
+                        {
+                            do
+                            {
+                                progressBarStatus =
+                                    doSomeTask( c.getString( c.getColumnIndex( "address" ) ) );
+                                progressBar.setProgress( progressBarStatus );
+
+                                try
+                                {
+                                    Thread.sleep( 10 );
+                                }
+                                catch ( InterruptedException e )
+                                {
+                                    e.printStackTrace();
+                                }
+
+                                progressBarHandler.post( new Runnable()
+                                {
+                                    @Override
+                                    public void run()
+                                    {
+                                        progressBar.setProgress( progressBarStatus );
+
+                                    }
+                                } );
+                            }
+                            while ( c.moveToNext() );
+                        }
+                        if ( progressBarStatus >= MAX_SIZE )
+                        {
+                            // try
+                            // {
+                            // Thread.sleep( 2000 );
+                            // }
+                            // catch ( Exception e )
+                            // {
+                            // e.printStackTrace();
+                            // }
+
+                            progressBar.dismiss();
+
+                            Intent intentSelectionActivity =
+                                new Intent( MainActivity.this, SelectionActivity.class );
+
+                            intentSelectionActivity.putStringArrayListExtra(
+                                "conversationAddresses",
+                                conversationAdresses );
+                            startActivity( intentSelectionActivity );
+
+                        }
+                    }
+                } ).start();
+
+            }
+
+        } );
+
+    }
+
+    public int doSomeTask( String adress )
+    {
+        Log.d( "doSomteTask()", "" + fileSize + "max size" + MAX_SIZE );
+        fileSize++;
+        String address = adress;
+        // c.getString( c.getColumnIndex( "address" ) );
+
+        Log.d( "firstC ", address );
+        // conversationAdresses.add( c.getString( c.getColumnIndex( "address" ) ) );
+        // conversationAdresses
+        // .add( c.getString( c.getColumnIndex( PhoneLookup.DISPLAY_NAME ) ) );
+
+        String contact = address;
+        Uri uri =
+            Uri.withAppendedPath( PhoneLookup.CONTENT_FILTER_URI, Uri.encode( address ) );
+        Cursor cs = getContentResolver().query( uri, new String[]
+        {
+            PhoneLookup.DISPLAY_NAME
+        }, PhoneLookup.NUMBER + "='" + address + "'", null, null );
+
+        if ( cs.getCount() > 0 )
+        {
+            cs.moveToFirst();
+            contact = cs.getString( cs.getColumnIndex( PhoneLookup.DISPLAY_NAME ) );
+        }
+        conversationAdresses.add( contact );
+
+        Log.d( "Second C ", "" + fileSize );
+        return fileSize;
+
     }
 
     public void getSMS( View v )
     {
+        fileSize = 0;
 
         Intent intentSelectionActivity = new Intent( this, SelectionActivity.class );
-
-        Uri SMS_INBOX = Uri.parse( "content://mms-sms/conversations/" );
-        Cursor c = getContentResolver().query( SMS_INBOX, null, null, null, "date desc" );
         ArrayList< String > conversationAdresses = new ArrayList< String >();
 
-        if ( c.moveToNext() )
-        {
-            do
-            {
-                String address = c.getString( c.getColumnIndex( "address" ) );
-                // conversationAdresses.add( c.getString( c.getColumnIndex( "address" ) ) );
-                // conversationAdresses
-                // .add( c.getString( c.getColumnIndex( PhoneLookup.DISPLAY_NAME ) ) );
-
-                String contact = address;
-                Uri uri =
-                    Uri.withAppendedPath( PhoneLookup.CONTENT_FILTER_URI, Uri.encode( address ) );
-                Cursor cs = getContentResolver().query( uri, new String[]
-                {
-                    PhoneLookup.DISPLAY_NAME
-                }, PhoneLookup.NUMBER + "='" + address + "'", null, null );
-
-                if ( cs.getCount() > 0 )
-                {
-                    cs.moveToFirst();
-                    contact = cs.getString( cs.getColumnIndex( PhoneLookup.DISPLAY_NAME ) );
-                }
-                conversationAdresses.add( contact );
-
-            }
-            while ( c.moveToNext() );
-
-        }
+        conversationAdresses = getallConversations();
 
         intentSelectionActivity.putStringArrayListExtra( "conversationAddresses",
             conversationAdresses );
@@ -287,6 +391,45 @@ public class MainActivity extends Activity
         // Log.e( "SQLiteException", ex.getMessage(), ex );
         // }
 
+    }
+
+    private ArrayList< String > getallConversations()
+    {
+        // TODO
+        Uri SMS_INBOX = Uri.parse( "content://mms-sms/conversations/" );
+        Cursor c = getContentResolver().query( SMS_INBOX, null, null, null, "date desc" );
+        MAX_SIZE = c.getCount();
+
+        ArrayList< String > conversationAdresses = new ArrayList< String >();
+
+        if ( c.moveToFirst() )
+        {
+            do
+            {
+                String address = c.getString( c.getColumnIndex( "address" ) );
+                // conversationAdresses.add( c.getString( c.getColumnIndex( "address" ) ) );
+                // conversationAdresses
+                // .add( c.getString( c.getColumnIndex( PhoneLookup.DISPLAY_NAME ) ) );
+
+                String contact = address;
+                Uri uri =
+                    Uri.withAppendedPath( PhoneLookup.CONTENT_FILTER_URI, Uri.encode( address ) );
+                Cursor cs = getContentResolver().query( uri, new String[]
+                {
+                    PhoneLookup.DISPLAY_NAME
+                }, PhoneLookup.NUMBER + "='" + address + "'", null, null );
+
+                if ( cs.getCount() > 0 )
+                {
+                    cs.moveToFirst();
+                    contact = cs.getString( cs.getColumnIndex( PhoneLookup.DISPLAY_NAME ) );
+                }
+                conversationAdresses.add( contact );
+
+            }
+            while ( c.moveToNext() );
+        }
+        return conversationAdresses;
     }
 
     @Override

@@ -1,6 +1,8 @@
 package com.example.myfirstapp;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 
 import android.app.Activity;
 import android.app.ProgressDialog;
@@ -57,16 +59,22 @@ public class MainActivity extends Activity
                     {
                         Uri SMS_INBOX = Uri.parse( "content://mms-sms/conversations/" );
                         Cursor c =
-                            getContentResolver().query( SMS_INBOX, null, null, null,
-                                "date desc limit 100" );
+                            getContentResolver().query( SMS_INBOX, new String[]
+                            {
+                                "address", "thread_id"
+                            }, null, null,
+                                "date desc" );
                         MAX_SIZE = c.getCount();
                         progressBar.setMax( MAX_SIZE );
                         if ( c.moveToFirst() )
                         {
                             do
                             {
+                                String count = "" + 0;
+                                count = getSMSCount( c.getInt( c.getColumnIndex( "thread_id" ) ) );
                                 progressBarStatus =
-                                    doSomeTask( c.getString( c.getColumnIndex( "address" ) ) );
+                                    doSomeTask( c.getString( c.getColumnIndex( "address" ) ),
+                                        count );
                                 progressBar.setProgress( progressBarStatus );
 
                                 try
@@ -121,14 +129,52 @@ public class MainActivity extends Activity
 
     }
 
-    public int doSomeTask( String adress )
+    public String getSMSCount( int number )
     {
-        Log.d( "doSomteTask()", "" + fileSize + "max size" + MAX_SIZE );
+        Uri uri = Uri.parse( "content://sms" );
+        Cursor smsCountCursor =
+            getContentResolver().query( uri, new String[]
+            {
+                "date", "body"
+            }, "thread_id=" + number,
+                null, "date asc" );
+
+        int smsCount = smsCountCursor.getCount();
+
+        Log.d( "SMS count", smsCount + "" );
+
+        if ( smsCountCursor.moveToFirst() )
+        {
+            do
+            {
+
+                String str = smsCountCursor.getString( smsCountCursor.getColumnIndex( "date" ) );
+                Long ll = Long.parseLong( str );
+
+                String fg =
+                    new SimpleDateFormat( "dd/MM/yyyy HH:mm:ss" ).format( new Date( ll ) );
+                Log.d( "" + number,
+                    fg );
+
+                Log.d( "" + number + "->BODY",
+                    smsCountCursor.getString( smsCountCursor.getColumnIndex( "body" ) ) );
+
+            }
+            while ( smsCountCursor.moveToNext() );
+
+        }
+
+        return smsCount + "";
+    }
+
+    public int doSomeTask( String adress, String number )
+    {
+        // Log.d( "doSomteTask()", "" + fileSize + "max size" + MAX_SIZE );
         fileSize++;
         String address = adress;
         // c.getString( c.getColumnIndex( "address" ) );
 
-        Log.d( "firstC ", address );
+        // Log.d( "firstC ", address );
         // conversationAdresses.add( c.getString( c.getColumnIndex( "address" ) ) );
         // conversationAdresses
         // .add( c.getString( c.getColumnIndex( PhoneLookup.DISPLAY_NAME ) ) );
@@ -146,9 +192,12 @@ public class MainActivity extends Activity
             cs.moveToFirst();
             contact = cs.getString( cs.getColumnIndex( PhoneLookup.DISPLAY_NAME ) );
         }
-        conversationAdresses.add( contact );
+        if ( conversationAdresses.contains( contact + number ) )
+        {
+            Log.d( "DUPLICATE", contact + "" );
+        }
+        conversationAdresses.add( contact + " (" + number + ")" );
 
-        Log.d( "Second C ", "" + fileSize );
         return fileSize;
 
     }

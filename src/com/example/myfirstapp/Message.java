@@ -7,6 +7,7 @@ public class Message
     private String address;
     private int type;
     private int person;
+    private boolean isReceived = false;
 
     public String getBody()
     {
@@ -56,6 +57,16 @@ public class Message
     public void setPerson( int person )
     {
         this.person = person;
+    }
+
+    public boolean isReceived()
+    {
+        return isReceived;
+    }
+
+    public void setReceived( boolean isReceived )
+    {
+        this.isReceived = isReceived;
     }
 
 }

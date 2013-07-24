@@ -3,6 +3,7 @@ package com.example.myfirstapp;
 import java.util.ArrayList;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
@@ -43,8 +44,11 @@ public class SelectionActivity extends Activity
             public void onItemClick( AdapterView< ? > arg0, View arg1, int selection, long arg3 )
             {
                 Log.d( "SELECTED", ( String ) list.get( selection ) );
-                SCUtility.showToast( list.get( selection ), SelectionActivity.this );
 
+                Intent returnIntent = new Intent( SelectionActivity.this, MainActivity.class );
+                returnIntent.putExtra( "result", list.get( selection ) );
+                setResult( RESULT_OK, returnIntent );
+                finish();
             }
         } );
 

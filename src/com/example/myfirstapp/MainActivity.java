@@ -27,6 +27,7 @@ public class MainActivity extends Activity
     private Button btnStartProgress;
     private final Handler progressBarHandler = new Handler();
     ArrayList< String > conversationAdresses = new ArrayList< String >();
+    ArrayList< String > conversationCount = new ArrayList< String >();
 
     @Override
     protected void onCreate( Bundle savedInstanceState )
@@ -63,7 +64,7 @@ public class MainActivity extends Activity
                             {
                                 "address", "thread_id"
                             }, null, null,
-                                "date desc" );
+                                "date desc limit 100" );
                         MAX_SIZE = c.getCount();
                         progressBar.setMax( MAX_SIZE );
                         if ( c.moveToFirst() )
@@ -117,6 +118,10 @@ public class MainActivity extends Activity
                             intentSelectionActivity.putStringArrayListExtra(
                                 "conversationAddresses",
                                 conversationAdresses );
+                            intentSelectionActivity.putStringArrayListExtra(
+                                "conversationCount",
+                                conversationCount );
+
                             startActivity( intentSelectionActivity );
 
                         }
@@ -192,11 +197,9 @@ public class MainActivity extends Activity
             cs.moveToFirst();
             contact = cs.getString( cs.getColumnIndex( PhoneLookup.DISPLAY_NAME ) );
         }
-        if ( conversationAdresses.contains( contact + number ) )
-        {
-            Log.d( "DUPLICATE", contact + "" );
-        }
-        conversationAdresses.add( contact + " (" + number + ")" );
+
+        conversationAdresses.add( contact );
+        conversationCount.add( number );
 
         return fileSize;
 

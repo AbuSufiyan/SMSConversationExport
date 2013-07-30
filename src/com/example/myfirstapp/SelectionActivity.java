@@ -10,30 +10,26 @@ import android.view.Menu;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
-import android.widget.ArrayAdapter;
 import android.widget.ListView;
 
 public class SelectionActivity extends Activity
 {
 
-    ArrayList< String > list = new ArrayList< String >();
+    ArrayList< SmsInfoUnit > smsUnitList = new ArrayList< SmsInfoUnit >();
 
     @Override
     protected void onCreate( Bundle savedInstanceState )
     {
         super.onCreate( savedInstanceState );
         setContentView( R.layout.activity_selection );
-        ArrayList< String > countList = new ArrayList< String >();
-        ArrayList< String > displayList = new ArrayList< String >();
 
         Bundle extras = getIntent().getExtras();
         if ( extras != null )
         {
-            list = extras.getStringArrayList( "conversationAddresses" );
-            countList = extras.getStringArrayList( "conversationCount" );
+
+            smsUnitList = ( ArrayList< SmsInfoUnit > ) extras.get( "conversationInfoUnits" );
 
         }
-        displayList = merge( list, countList );
 
         final ListView conversationList = ( ListView ) findViewById( R.id.listView1 );
 
@@ -43,37 +39,19 @@ public class SelectionActivity extends Activity
             @Override
             public void onItemClick( AdapterView< ? > arg0, View arg1, int selection, long arg3 )
             {
-                Log.d( "SELECTED", ( String ) list.get( selection ) );
+                Log.d( "SELECTED", smsUnitList.get( selection ).getThreadId() + "" );
 
                 Intent returnIntent = new Intent( SelectionActivity.this, MainActivity.class );
-                returnIntent.putExtra( "result", list.get( selection ) );
+                returnIntent.putExtra( "result", smsUnitList.get( selection ).getThreadId() );
                 setResult( RESULT_OK, returnIntent );
                 finish();
             }
         } );
 
-        final ArrayAdapter< String > adapter = new ArrayAdapter< String >( this,
-            android.R.layout.simple_list_item_1, displayList );
+        ConversationListAdapater adapter =
+            new ConversationListAdapater( this, R.layout.all_conversation_list_item, smsUnitList );
         conversationList.setAdapter( adapter );
 
-    }
-
-    private ArrayList< String > merge( ArrayList< String > list, ArrayList< String > countList )
-    {
-        ArrayList< String > mergeList = new ArrayList< String >();
-        if ( list.size() == countList.size() )
-        {
-            for ( int i = 0; i < list.size(); i++ )
-            {
-                mergeList.add( list.get( i ) + " (" + countList.get( i ) + ")" );
-
-            }
-        }
-        else
-        {
-            return list;
-        }
-        return mergeList;
     }
 
     @Override

@@ -29,6 +29,7 @@ public class MainActivity extends Activity
     private Button btnStartProgress;
     private final Handler progressBarHandler = new Handler();
     ArrayList< String > conversationAdresses = new ArrayList< String >();
+    ArrayList< SmsInfoUnit > conversationInfoUnits = new ArrayList< SmsInfoUnit >();
     ArrayList< String > conversationCount = new ArrayList< String >();
 
     @Override
@@ -85,22 +86,24 @@ public class MainActivity extends Activity
                             {
                                 do
                                 {
-                                    String count = "" + 0;
+                                    int count = 0;
+                                    int threadId = c.getInt( c.getColumnIndex( "thread_id" ) );
                                     count =
-                                        getSMSCount( c.getInt( c.getColumnIndex( "thread_id" ) ) );
+                                        getSMSCount( threadId );
+
                                     progressBarStatus =
                                         doSomeTask( c.getString( c.getColumnIndex( "address" ) ),
-                                            count );
+                                            count, threadId );
                                     // progressBar.setProgress( progressBarStatus );
 
-                                    try
-                                    {
-                                        Thread.sleep( 10 );
-                                    }
-                                    catch ( InterruptedException e )
-                                    {
-                                        e.printStackTrace();
-                                    }
+                                    // try
+                                    // {
+                                    // Thread.sleep( 10 );
+                                    // }
+                                    // catch ( InterruptedException e )
+                                    // {
+                                    // e.printStackTrace();
+                                    // }
 
                                     progressBarHandler.post( new Runnable()
                                     {
@@ -121,12 +124,8 @@ public class MainActivity extends Activity
                                 Intent intentSelectionActivity =
                                     new Intent( MainActivity.this, SelectionActivity.class );
 
-                                intentSelectionActivity.putStringArrayListExtra(
-                                    "conversationAddresses",
-                                    conversationAdresses );
-                                intentSelectionActivity.putStringArrayListExtra(
-                                    "conversationCount",
-                                    conversationCount );
+                                intentSelectionActivity.putExtra( "conversationInfoUnits",
+                                    conversationInfoUnits );
 
                                 startActivityForResult( intentSelectionActivity, 1 );
 
@@ -141,12 +140,15 @@ public class MainActivity extends Activity
                     Intent intentSelectionActivity =
                         new Intent( MainActivity.this, SelectionActivity.class );
 
-                    intentSelectionActivity.putStringArrayListExtra(
-                        "conversationAddresses",
-                        conversationAdresses );
-                    intentSelectionActivity.putStringArrayListExtra(
-                        "conversationCount",
-                        conversationCount );
+                    // intentSelectionActivity.putStringArrayListExtra(
+                    // "conversationAddresses",
+                    // conversationAdresses );
+                    intentSelectionActivity.putExtra( "conversationInfoUnits",
+                        conversationInfoUnits );
+
+                    // intentSelectionActivity.putStringArrayListExtra(
+                    // "conversationCount",
+                    // conversationCount );
 
                     startActivityForResult( intentSelectionActivity, 1 );
                 }
@@ -154,7 +156,7 @@ public class MainActivity extends Activity
         } );
     }
 
-    public String getSMSCount( int number )
+    public int getSMSCount( int number )
     {
         Uri uri = Uri.parse( "content://sms" );
         Cursor smsCountCursor =
@@ -176,10 +178,10 @@ public class MainActivity extends Activity
          * smsCountCursor.getColumnIndex( "body" ) ) ); } while ( smsCountCursor.moveToNext() ); }
          */
 
-        return smsCount + "";
+        return smsCount;
     }
 
-    public int doSomeTask( String adress, String number )
+    public int doSomeTask( String adress, int number, int threadId )
     {
         // Log.d( "doSomteTask()", "" + fileSize + "max size" + MAX_SIZE );
         fileSize++;
@@ -205,14 +207,14 @@ public class MainActivity extends Activity
             contact = cs.getString( cs.getColumnIndex( PhoneLookup.DISPLAY_NAME ) );
         }
 
-        conversationAdresses.add( contact );
-        conversationCount.add( number );
+        SmsInfoUnit smsinfo = new SmsInfoUnit( contact, threadId, number );
+        conversationInfoUnits.add( smsinfo );
 
         return fileSize;
 
     }
 
-    public void getSMS( String number, String name )
+    public void getSMS( int threadId )
     {
         fileSize = 0;
 
@@ -230,8 +232,8 @@ public class MainActivity extends Activity
         TextView tv = ( TextView ) findViewById( R.id.smslist );
 
         StringBuilder smsBuilder = new StringBuilder();
-        final String SMS_URI_SENT = "content://sms/sent";
-        final String SMS_URI_INBOX = "content://sms/inbox";
+        // final String SMS_URI_SENT = "content://sms/sent";
+        final String SMS_URI_INBOX = "content://sms";
         try
         {
             Map< Long, Message > conversationMap = new TreeMap< Long, Message >();
@@ -250,19 +252,19 @@ public class MainActivity extends Activity
                     // To get the sms of Names without numbers eg: SBT, IRCTC
                     // .query( uriInbox, projection, "address ='" + number + "'",
 
-                    .query( uriInbox, projection, "address ='" + number + "'",
+                    .query( uriInbox, projection, "thread_id=" + threadId,
                         null, "date asc" );
 
-            Uri uri = Uri.parse( SMS_URI_SENT );
-            Cursor curSent =
-                getContentResolver()
-                    .query( uri, projection, "PHONE_NUMBERS_EQUAL(address, '" + number + "')",
-                        null,
-                        "date asc" );
+            //
+            // Uri uri = Uri.parse( SMS_URI_SENT );
+            // Cursor curSent =
+            // getContentResolver()
+            // .query( uriInbox, projection, "thread_id =" + threadId,
+            // null, "date asc" );
 
-            boolean sent = false;
+            boolean sent = true;
             boolean received = false;
-            sent = curSent.moveToFirst();
+            // sent = curSent.moveToFirst();
             received = curReceived.moveToFirst();
 
             if ( received && sent )
@@ -277,7 +279,7 @@ public class MainActivity extends Activity
 
                 do
                 {
-                    smsReceivedCount++;
+
                     String strAddress = curReceived.getString( indexAddress );
                     int intPerson = curReceived.getInt( indexPerson );
                     String strbody = curReceived.getString( indexBody );
@@ -290,7 +292,18 @@ public class MainActivity extends Activity
                     sms.setDate( longDate );
                     sms.setType( intType );
                     sms.setPerson( intPerson );
-                    sms.setReceived( true );
+                    if ( intType == 2 )
+                    {
+                        sms.setReceived( false );
+                        smsSentCount++;
+
+                    }
+                    else
+                    {
+                        sms.setReceived( true );
+                        smsReceivedCount++;
+
+                    }
 
                     conversationMap.put( longDate, sms );
                     //
@@ -304,123 +317,123 @@ public class MainActivity extends Activity
                 }
                 while ( curReceived.moveToNext() );
 
-                indexAddress = curSent.getColumnIndex( "address" );
-                indexPerson = curSent.getColumnIndex( "person" );
-                indexBody = curSent.getColumnIndex( "body" );
-                indexDate = curSent.getColumnIndex( "date" );
-                indexType = curSent.getColumnIndex( "type" );
-
-                do
-                {
-                    smsSentCount++;
-                    String strAddress = curSent.getString( indexAddress );
-                    int intPerson = curSent.getInt( indexPerson );
-                    String strbody = curSent.getString( indexBody );
-                    long longDate = curSent.getLong( indexDate );
-                    int intType = curSent.getInt( indexType );
-
-                    Message sms = new Message();
-                    sms.setAddress( strAddress );
-                    sms.setBody( strbody );
-                    sms.setDate( longDate );
-                    sms.setType( intType );
-                    sms.setPerson( intPerson );
-                    sms.setReceived( false );
-
-                    conversationMap.put( longDate, sms );
-                    //
-                    // smsBuilder.append( "[ " );
-                    // // smsBuilder.append( strAddress + ", " );
-                    // // smsBuilder.append( intPerson + ", " );
-                    // smsBuilder.append( strbody + " " );
-                    // // smsBuilder.append( longDate + ", " );
-                    // // smsBuilder.append( int_Type );
-                    // smsBuilder.append( " ]\n\n" );
-                }
-                while ( curSent.moveToNext() );
+                // indexAddress = curSent.getColumnIndex( "address" );
+                // indexPerson = curSent.getColumnIndex( "person" );
+                // indexBody = curSent.getColumnIndex( "body" );
+                // indexDate = curSent.getColumnIndex( "date" );
+                // indexType = curSent.getColumnIndex( "type" );
+                //
+                // do
+                // {
+                // smsSentCount++;
+                // String strAddress = curSent.getString( indexAddress );
+                // int intPerson = curSent.getInt( indexPerson );
+                // String strbody = curSent.getString( indexBody );
+                // long longDate = curSent.getLong( indexDate );
+                // int intType = curSent.getInt( indexType );
+                //
+                // Message sms = new Message();
+                // sms.setAddress( strAddress );
+                // sms.setBody( strbody );
+                // sms.setDate( longDate );
+                // sms.setType( intType );
+                // sms.setPerson( intPerson );
+                // sms.setReceived( false );
+                //
+                // conversationMap.put( longDate, sms );
+                // //
+                // // smsBuilder.append( "[ " );
+                // // // smsBuilder.append( strAddress + ", " );
+                // // // smsBuilder.append( intPerson + ", " );
+                // // smsBuilder.append( strbody + " " );
+                // // // smsBuilder.append( longDate + ", " );
+                // // // smsBuilder.append( int_Type );
+                // // smsBuilder.append( " ]\n\n" );
+                // }
+                // while ( curSent.moveToNext() );
 
             }
 
-            else if ( received )
-            {
-                // Only Received
-                int indexAddress = curReceived.getColumnIndex( "address" );
-                int indexPerson = curReceived.getColumnIndex( "person" );
-                int indexBody = curReceived.getColumnIndex( "body" );
-                int indexDate = curReceived.getColumnIndex( "date" );
-                int indexType = curReceived.getColumnIndex( "type" );
+            // else if ( received )
+            // {
+            // // Only Received
+            // int indexAddress = curReceived.getColumnIndex( "address" );
+            // int indexPerson = curReceived.getColumnIndex( "person" );
+            // int indexBody = curReceived.getColumnIndex( "body" );
+            // int indexDate = curReceived.getColumnIndex( "date" );
+            // int indexType = curReceived.getColumnIndex( "type" );
+            //
+            // do
+            // {
+            // smsReceivedCount++;
+            // String strAddress = curReceived.getString( indexAddress );
+            // int intPerson = curReceived.getInt( indexPerson );
+            // String strbody = curReceived.getString( indexBody );
+            // long longDate = curReceived.getLong( indexDate );
+            // int intType = curReceived.getInt( indexType );
+            //
+            // Message sms = new Message();
+            // sms.setAddress( strAddress );
+            // sms.setBody( strbody );
+            // sms.setDate( longDate );
+            // sms.setType( intType );
+            // sms.setPerson( intPerson );
+            // sms.setReceived( true );
+            //
+            // conversationMap.put( longDate, sms );
+            // //
+            // // smsBuilder.append( "[ " );
+            // // // smsBuilder.append( strAddress + ", " );
+            // // // smsBuilder.append( intPerson + ", " );
+            // // smsBuilder.append( strbody + " " );
+            // // // smsBuilder.append( longDate + ", " );
+            // // // smsBuilder.append( int_Type );
+            // // smsBuilder.append( " ]\n\n" );
+            // }
+            // while ( curReceived.moveToNext() );
+            // }
 
-                do
-                {
-                    smsReceivedCount++;
-                    String strAddress = curReceived.getString( indexAddress );
-                    int intPerson = curReceived.getInt( indexPerson );
-                    String strbody = curReceived.getString( indexBody );
-                    long longDate = curReceived.getLong( indexDate );
-                    int intType = curReceived.getInt( indexType );
-
-                    Message sms = new Message();
-                    sms.setAddress( strAddress );
-                    sms.setBody( strbody );
-                    sms.setDate( longDate );
-                    sms.setType( intType );
-                    sms.setPerson( intPerson );
-                    sms.setReceived( true );
-
-                    conversationMap.put( longDate, sms );
-                    //
-                    // smsBuilder.append( "[ " );
-                    // // smsBuilder.append( strAddress + ", " );
-                    // // smsBuilder.append( intPerson + ", " );
-                    // smsBuilder.append( strbody + " " );
-                    // // smsBuilder.append( longDate + ", " );
-                    // // smsBuilder.append( int_Type );
-                    // smsBuilder.append( " ]\n\n" );
-                }
-                while ( curReceived.moveToNext() );
-            }
-
-            else if ( sent )
-            {
-                // Only Sent
-                int indexAddress = curSent.getColumnIndex( "address" );
-                int indexPerson = curSent.getColumnIndex( "person" );
-                int indexBody = curSent.getColumnIndex( "body" );
-                int indexDate = curSent.getColumnIndex( "date" );
-                int indexType = curSent.getColumnIndex( "type" );
-
-                do
-                {
-                    smsSentCount++;
-                    String strAddress = curSent.getString( indexAddress );
-                    int intPerson = curSent.getInt( indexPerson );
-                    String strbody = curSent.getString( indexBody );
-                    long longDate = curSent.getLong( indexDate );
-                    int intType = curSent.getInt( indexType );
-
-                    Message sms = new Message();
-                    sms.setAddress( strAddress );
-                    sms.setBody( strbody );
-                    sms.setDate( longDate );
-                    sms.setType( intType );
-                    sms.setPerson( intPerson );
-                    sms.setReceived( false );
-
-                    conversationMap.put( longDate, sms );
-                    //
-                    // smsBuilder.append( "[ " );
-                    // // smsBuilder.append( strAddress + ", " );
-                    // // smsBuilder.append( intPerson + ", " );
-                    // smsBuilder.append( strbody + " " );
-                    // // smsBuilder.append( longDate + ", " );
-                    // // smsBuilder.append( int_Type );
-                    // smsBuilder.append( " ]\n\n" );
-                }
-                while ( curSent.moveToNext() );
-            }
+            // else if ( sent )
+            // {
+            // // Only Sent
+            // int indexAddress = curSent.getColumnIndex( "address" );
+            // int indexPerson = curSent.getColumnIndex( "person" );
+            // int indexBody = curSent.getColumnIndex( "body" );
+            // int indexDate = curSent.getColumnIndex( "date" );
+            // int indexType = curSent.getColumnIndex( "type" );
+            //
+            // do
+            // {
+            // smsSentCount++;
+            // String strAddress = curSent.getString( indexAddress );
+            // int intPerson = curSent.getInt( indexPerson );
+            // String strbody = curSent.getString( indexBody );
+            // long longDate = curSent.getLong( indexDate );
+            // int intType = curSent.getInt( indexType );
+            //
+            // Message sms = new Message();
+            // sms.setAddress( strAddress );
+            // sms.setBody( strbody );
+            // sms.setDate( longDate );
+            // sms.setType( intType );
+            // sms.setPerson( intPerson );
+            // sms.setReceived( false );
+            //
+            // conversationMap.put( longDate, sms );
+            // //
+            // // smsBuilder.append( "[ " );
+            // // // smsBuilder.append( strAddress + ", " );
+            // // // smsBuilder.append( intPerson + ", " );
+            // // smsBuilder.append( strbody + " " );
+            // // // smsBuilder.append( longDate + ", " );
+            // // // smsBuilder.append( int_Type );
+            // // smsBuilder.append( " ]\n\n" );
+            // }
+            // while ( curSent.moveToNext() );
+            // }
             else
             {
-                SCUtility.showDialogOk( number, "No messages sent or received from this number",
+                SCUtility.showDialogOk( "Error", "No messages sent or received from this number",
                     MainActivity.this );
             } // end if
 
@@ -429,11 +442,11 @@ public class MainActivity extends Activity
                 curReceived.close();
                 curReceived = null;
             }
-            if ( !curSent.isClosed() )
-            {
-                curSent.close();
-                curSent = null;
-            }
+            // if ( !curSent.isClosed() )
+            // {
+            // curSent.close();
+            // curSent = null;
+            // }
 
             for ( Long date : conversationMap.keySet() )
             {
@@ -442,7 +455,8 @@ public class MainActivity extends Activity
 
                 if ( sms.isReceived() )
                 {
-                    smsBuilder.append( name + " :: " + sms.getBody() + "\n\n" );
+                    smsBuilder.append( getPhoneNumber( sms.getAddress() ) + " :: " + sms.getBody()
+                        + "\n\n" );
                 }
                 else
                 {
@@ -518,9 +532,8 @@ public class MainActivity extends Activity
             Bundle extras = data.getExtras();
             if ( extras != null )
             {
-                String name = extras.getString( "result" );
-                String number = getPhoneNumber( name );
-                getSMS( number, name );
+                int threadId = extras.getInt( "result" );
+                getSMS( threadId );
             }
             else
             {

@@ -5,7 +5,10 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.Dialog;
 import android.app.ProgressDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
@@ -14,6 +17,7 @@ import android.os.Handler;
 import android.provider.ContactsContract;
 import android.provider.ContactsContract.PhoneLookup;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -28,9 +32,7 @@ public class MainActivity extends Activity
     private int progressBarStatus;
     private Button btnStartProgress;
     private final Handler progressBarHandler = new Handler();
-    ArrayList< String > conversationAdresses = new ArrayList< String >();
     ArrayList< SmsInfoUnit > conversationInfoUnits = new ArrayList< SmsInfoUnit >();
-    ArrayList< String > conversationCount = new ArrayList< String >();
 
     @Override
     protected void onCreate( Bundle savedInstanceState )
@@ -59,8 +61,7 @@ public class MainActivity extends Activity
             {
                 btnStartProgress.setClickable( false );
 
-                if ( conversationAdresses == null || conversationAdresses.isEmpty()
-                    || conversationCount == null || conversationCount.isEmpty() )
+                if ( conversationInfoUnits == null || conversationInfoUnits.isEmpty() )
                 {
                     progressBar = new ProgressDialog( v.getContext() );
                     progressBar.setCancelable( true );
@@ -566,5 +567,52 @@ public class MainActivity extends Activity
             num = name;
         }
         return num;
+    }
+
+    @Override
+    public void onBackPressed()
+    {
+        // super.onBackPressed();
+
+        Dialog dlg = new AlertDialog.Builder( MainActivity.this ).setTitle( "Quit" )
+            .setMessage( "Are you sure you wish to exit this application?" ).setCancelable( false )
+            .setNegativeButton( "No", new DialogInterface.OnClickListener()
+            {
+                @Override
+                public void onClick( DialogInterface dialog, int whichButton )
+                {
+
+                }
+            } )
+            .setPositiveButton( "Yes", new DialogInterface.OnClickListener()
+            {
+                @Override
+                public void onClick( DialogInterface dialog, int whichButton )
+                {
+                    finish();
+                }
+            } ).create();
+
+        dlg.setOnKeyListener( new DialogInterface.OnKeyListener()
+        {
+
+            @Override
+            public boolean onKey( DialogInterface dialog, int keyCode,
+                KeyEvent event )
+            {
+                if ( keyCode == KeyEvent.KEYCODE_SEARCH
+                    && event.getRepeatCount() == 0 )
+                {
+                    return true;
+                }
+                if ( keyCode == KeyEvent.KEYCODE_MENU )
+                {
+                    return true;
+                }
+                return false;
+            }
+
+        } );
+        dlg.show();
     }
 }
